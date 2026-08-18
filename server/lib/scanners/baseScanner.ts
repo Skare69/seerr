@@ -54,6 +54,7 @@ interface ProcessOptions {
 export interface ProcessableEpisode {
   episodeNumber: number;
   hasFile: boolean;
+  hasFile4k?: boolean;
 }
 
 export interface ProcessableSeason {
@@ -716,6 +717,10 @@ class BaseScanner<T> {
               MediaStatus.AVAILABLE;
             toSave.push(existingEpisode);
           }
+          if (this.enable4kShow && episodeDetail.hasFile4k) {
+            existingEpisode.status4k = MediaStatus.AVAILABLE;
+            toSave.push(existingEpisode);
+          }
         } else {
           const newEpisode = new Episode({
             episodeNumber: episodeDetail.episodeNumber,
@@ -728,7 +733,9 @@ class BaseScanner<T> {
               ? episodeDetail.hasFile
                 ? MediaStatus.AVAILABLE
                 : MediaStatus.UNKNOWN
-              : MediaStatus.UNKNOWN,
+              : this.enable4kShow && episodeDetail.hasFile4k
+                ? MediaStatus.AVAILABLE
+                : MediaStatus.UNKNOWN,
             season: Promise.resolve(dbSeason),
           });
           toSave.push(newEpisode);
