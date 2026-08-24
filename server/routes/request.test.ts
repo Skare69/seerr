@@ -33,12 +33,6 @@ const sendNotificationMock = mock.method(
   async () => undefined
 ).mock;
 
-// getMovie/getTvShow are class-field arrow functions (own instance
-// properties), so they can't be mocked via a plain prototype assignment —
-// intercept them with a prototype accessor whose setter is a no-op, so the
-// constructor's `this.getMovie = ...` hits the no-op setter instead of
-// shadowing the prototype getter. (Pattern copied from
-// availabilitySync.test.ts.)
 const getMovieImpl: (args: {
   movieId: number;
   language?: string;
@@ -87,10 +81,6 @@ function fakeTmdbShow(tmdbId: number): TmdbTvDetails {
   } as unknown as TmdbTvDetails;
 }
 
-// Copied from server/lib/scanners/radarr/radarr.test.ts's configureRadarr —
-// `id` defaults to array index i unless overridden, so an explicit `id`
-// that differs from array position simulates a server that was deleted and
-// re-added (the scenario that exposes the override-rule matching bug).
 function configureRadarr(overrides: Partial<RadarrSettings>[]): void {
   const settings = getSettings();
   settings.radarr = overrides.map((o, i) => ({
@@ -114,8 +104,6 @@ function configureRadarr(overrides: Partial<RadarrSettings>[]): void {
   })) as RadarrSettings[];
 }
 
-// Copied from server/lib/scanners/sonarr/sonarr.test.ts's configureSonarr,
-// same reasoning as configureRadarr above.
 function configureSonarr(overrides: Partial<SonarrSettings>[]): void {
   const settings = getSettings();
   settings.sonarr = overrides.map((o, i) => ({
@@ -653,8 +641,6 @@ describe('DELETE /request/:requestId, deleted media status restoration', () => {
 
 describe('POST /request (movie), override rules', () => {
   it('applies an override rule when the default Radarr server id differs from its array index', async () => {
-    // Simulates a Radarr server that was deleted and re-added: it sits at
-    // array index 0, but its persistent id is 5 (id != index).
     configureRadarr([{ id: 5, isDefault: true, is4k: false }]);
     getSettings().sonarr = [];
 
