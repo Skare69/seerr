@@ -252,13 +252,21 @@ export class MediaRequest {
         ? settings.sonarr.find((s) => s.is4k && s.isDefault)?.id
         : settings.sonarr.find((s) => !s.is4k && s.isDefault)?.id;
 
+      const defaultServiceId =
+        requestBody.mediaType === MediaType.MOVIE
+          ? defaultRadarrId
+          : defaultSonarrId;
+
       const overrideRuleRepository = getRepository(OverrideRule);
-      const overrideRules = await overrideRuleRepository.find({
-        where:
-          requestBody.mediaType === MediaType.MOVIE
-            ? { radarrServiceId: defaultRadarrId }
-            : { sonarrServiceId: defaultSonarrId },
-      });
+      const overrideRules =
+        defaultServiceId === undefined
+          ? []
+          : await overrideRuleRepository.find({
+              where:
+                requestBody.mediaType === MediaType.MOVIE
+                  ? { radarrServiceId: defaultServiceId }
+                  : { sonarrServiceId: defaultServiceId },
+            });
 
       const appliedOverrideRules = overrideRules.filter((rule) => {
         const hasAnimeKeyword =
