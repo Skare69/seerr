@@ -1,9 +1,11 @@
 import TheMovieDb from '@server/api/themoviedb';
 import type {
   TmdbCollectionResult,
+  TmdbSearchCollectionResponse,
   TmdbSearchMultiResponse,
 } from '@server/api/themoviedb/interfaces';
 import Media from '@server/entity/Media';
+import cacheManager from '@server/lib/cache';
 import { findSearchProvider } from '@server/lib/search';
 import logger from '@server/logger';
 import { mapSearchResults } from '@server/models/Search';
@@ -31,17 +33,48 @@ searchRoutes.get('/', async (req, res, next) => {
       const page = Number(req.query.page) || 1;
       const language = (req.query.language as string) ?? req.locale;
 
+      const tmdbCache = cacheManager.getCache('tmdb').data;
+      const pagesKey = `search-collections-pages:${language}:${queryString}`;
+      const knownCollections = tmdbCache.get<{
+        total_pages: number;
+        total_results: number;
+      }>(pagesKey);
+
+      const fetchCollections =
+        async (): Promise<TmdbSearchCollectionResponse> => {
+          if (knownCollections && page > knownCollections.total_pages) {
+            return {
+              page,
+              results: [],
+              total_pages: knownCollections.total_pages,
+              total_results: knownCollections.total_results,
+            };
+          }
+
+          const collections = await tmdb.searchCollections({
+            query: queryString,
+            page,
+            language,
+          });
+
+          tmdbCache.set(
+            pagesKey,
+            {
+              total_pages: collections.total_pages,
+              total_results: collections.total_results,
+            },
+            300
+          );
+          return collections;
+        };
+
       const [multi, collections] = await Promise.all([
         tmdb.searchMulti({
           query: queryString,
           page,
           language,
         }),
-        tmdb.searchCollections({
-          query: queryString,
-          page,
-          language,
-        }),
+        fetchCollections(),
       ]);
 
       const collectionResults: TmdbCollectionResult[] = collections.results.map(
